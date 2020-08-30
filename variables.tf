@@ -6,10 +6,7 @@ variable "az" {
   type        = string
   description = "the AZ prometheus will live in"
 }
-variable "disk_size_gb" {
-  type        = number
-  description = "How big the prometheus persistent disk should be, in GB"
-}
+
 variable "ami" {
   type        = string
   description = "AMI id for the instance"
