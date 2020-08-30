@@ -4,7 +4,7 @@ module "label" {
   stage      = var.stage
   name       = var.name
   delimiter  = var.delimiter
-  attributes = var.attributes
+  attributes = concat(var.attributes, ["prometheus"])
   tags       = merge(var.tags, map("Application", local.tag_application))
 }
 
