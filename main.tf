@@ -1,5 +1,5 @@
 module "label" {
-  source     = "git::https://github.com/cloudposse/terraform-null-label.git?ref=tags/0.16.0"
+  source     = "git::https://github.com/cloudposse/terraform-null-label.git?ref=tags/0.19.2"
   namespace  = var.namespace
   stage      = var.stage
   name       = var.name
@@ -9,7 +9,7 @@ module "label" {
 }
 
 module "label_efs" {
-  source     = "git::https://github.com/cloudposse/terraform-null-label.git?ref=tags/0.16.0"
+  source     = "git::https://github.com/cloudposse/terraform-null-label.git?ref=tags/0.19.2"
   namespace  = var.namespace
   stage      = var.stage
   name       = var.name
@@ -102,7 +102,7 @@ resource "aws_ssm_parameter" "monitoring_nfs_url" {
 
 # create a kms_key to encrypt prometheus data with
 module "kms_key" {
-  source     = "git::https://github.com/cloudposse/terraform-aws-kms-key.git?ref=tags/0.4.0"
+  source     = "git::https://github.com/cloudposse/terraform-aws-kms-key.git?ref=tags/0.7.0"
   name       = var.name
   namespace  = var.namespace
   stage      = var.stage
@@ -115,7 +115,7 @@ module "kms_key" {
 
 # create a policy to let the instance fetch its own prefix from SSM params
 module "ssm_prefix_self" {
-  source            = "git::https://gitlab.com/guardianproject-ops/terraform-aws-ssm-param-store-iam?ref=master"
+  source            = "git::https://gitlab.com/guardianproject-ops/terraform-aws-ssm-param-store-iam?ref=tags/3.0.1"
   path_prefix       = "${module.label.id}/"
   prefix_with_label = false
   name              = var.name
@@ -151,7 +151,7 @@ resource "aws_iam_policy" "playbook_bucket_access" {
 
 # create a policy that allows the instance to use session manager and send logs an bucket
 module "session_manager" {
-  source         = "git::https://gitlab.com/guardianproject-ops/terraform-aws-session-manager-instance-policy?ref=master"
+  source         = "git::https://gitlab.com/guardianproject-ops/terraform-aws-session-manager-instance-policy?ref=tags/0.3.1"
   name           = var.name
   namespace      = var.namespace
   stage          = var.stage
@@ -184,7 +184,7 @@ resource "aws_iam_policy" "session_manager_bucket_access" {
 
 # attach policies to the instance role
 module "instance_role_attachment" {
-  source     = "git::https://gitlab.com/guardianproject-ops/terraform-aws-iam-instance-role-policy-attachment?ref=master"
+  source     = "git::https://gitlab.com/guardianproject-ops/terraform-aws-iam-instance-role-policy-attachment?ref=tags/2.0.1"
   namespace  = var.namespace
   stage      = var.stage
   name       = var.name
@@ -244,7 +244,7 @@ USERDATA
 }
 
 module "autoscale_group" {
-  source = "git::https://github.com/cloudposse/terraform-aws-ec2-autoscale-group.git?ref=tags/0.4.0"
+  source = "git::https://github.com/cloudposse/terraform-aws-ec2-autoscale-group.git?ref=tags/0.7.1"
 
   namespace  = var.namespace
   stage      = var.stage
