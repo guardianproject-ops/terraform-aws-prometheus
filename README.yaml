@@ -27,7 +27,7 @@ usage: |-
 
   ```hcl
   module "monitoring" {
-    source          = "git::https://gitlab.com/guardianproject-ops/terraform-aws-prometheus.git?ref=tags/0.1.0"
+    source          = "git::https://gitlab.com/guardianproject-ops/terraform-aws-prometheus.git?ref=master"
 
     namespace       = var.namespace
     name            = var.name
