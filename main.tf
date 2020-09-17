@@ -1,19 +1,13 @@
 module "label" {
   source     = "git::https://github.com/cloudposse/terraform-null-label.git?ref=tags/0.19.2"
-  namespace  = var.namespace
-  stage      = var.stage
-  name       = var.name
-  delimiter  = var.delimiter
+  context    = module.this.context
   attributes = concat(var.attributes, ["prometheus"])
   tags       = merge(var.tags, map("Application", local.tag_application))
 }
 
 module "label_efs" {
   source     = "git::https://github.com/cloudposse/terraform-null-label.git?ref=tags/0.19.2"
-  namespace  = var.namespace
-  stage      = var.stage
-  name       = var.name
-  delimiter  = var.delimiter
+  context    = module.this.context
   attributes = concat(var.attributes, ["efs"])
   tags       = merge(var.tags, map("Application", local.tag_application))
 }
