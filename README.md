@@ -79,21 +79,25 @@ Instead pin to the release tag (e.g. `?ref=tags/x.y.z`) of one of our [latest re
 module "monitoring" {
   source          = "git::https://gitlab.com/guardianproject-ops/terraform-aws-prometheus.git?ref=master"
 
-  namespace       = var.namespace
-  name            = var.name
-  stage           = var.stage
-  delimiter       = var.delimiter
-  attributes      = ["matrix-alertmanager"]
-  tags            = var.tags
+  context                           = module.this.context
+  cloudflare_origin_ca_key          = var.cloudflare_origin_ca_key
+  cloudflare_auth_key               = var.cloudflare_auth_key
+  cloudflare_auth_email             = var.cloudflare_auth_email
+  cloudflare_zone                   = var.cloudflare_zone
+  cloudflare_zone_id                = var.cloudflare_zone_id
+  monitoring_domain                 = var.monitoring_domain
+  matrix_alertmanager_shared_secret = var.matrix_alertmanager_shared_secret
+  matrix_alertmanager_url           = var.matrix_alertmanager_url
+  alertmanager_receivers            = replace(var.alertmanager_receivers, "matrix_alertmanager_url", var.matrix_alertmanager_lambda_url)
+  alertmanager_route                = var.alertmanager_route
+  kms_key_arn                       = var.kms_key_arn
 
-  playbook_bundle_s3_key = var.playbook_bundle_s3_key
-  playbook_bucket        = var.playbook_bucket
-  ssm_logs_bucket        = var.ssm_logs_bucket
+  ami                    = local.ami
   vpc_id                 = var.vpc_id
-  subnet_id              = var.subnet_id
-  ami                    = var.ami
-  instance_type          = var.instance_type
   az                     = var.az
+  instance_type          = var.instance_type
+  subnet_id              = var.subnet_id
+  ssm_logs_bucket        = var.ssm_logs_bucket
 }
 ```
 
@@ -127,16 +131,17 @@ module "monitoring" {
 | delimiter | Delimiter to be used between `namespace`, `environment`, `stage`, `name` and `attributes`.<br>Defaults to `-` (hyphen). Set to `""` to use no delimiter at all. | `string` | n/a | yes |
 | enabled | Set to false to prevent the module from creating any resources | `bool` | n/a | yes |
 | environment | Environment, e.g. 'uw2', 'us-west-2', OR 'prod', 'staging', 'dev', 'UAT' | `string` | n/a | yes |
+| extra\_ssm\_params | Extra key value pairs to set as SSM params | `map(string)` | `{}` | no |
 | id\_length\_limit | Limit `id` to this many characters.<br>Set to `0` for unlimited length.<br>Set to `null` for default, which is `0`.<br>Does not affect `id_full`. | `number` | n/a | yes |
 | instance\_type | ec2 instance type | `string` | `"t3.nano"` | no |
+| key\_name | Optional SSH key pair name | `string` | `""` | no |
+| kms\_key\_arn | kms key arn to encrypt prometheus data with, if none provided one will be created. | `string` | `""` | no |
 | label\_order | The naming order of the id output and Name tag.<br>Defaults to ["namespace", "environment", "stage", "name", "attributes"].<br>You can omit any of the 5 elements, but at least one must be present. | `list(string)` | n/a | yes |
 | matrix\_alertmanager\_shared\_secret | n/a | `string` | n/a | yes |
 | matrix\_alertmanager\_url | n/a | `string` | n/a | yes |
 | monitoring\_domain | the full domain that grafana + prometheus + alert manager will be made available at. (example: monitor.mydomain.com) | `string` | n/a | yes |
 | name | Solution name, e.g. 'app' or 'jenkins' | `string` | n/a | yes |
 | namespace | Namespace, which could be your organization name or abbreviation, e.g. 'eg' or 'cp' | `string` | n/a | yes |
-| playbook\_bucket | the s3 bucket id that the instance can read ansible playbooks from | `string` | n/a | yes |
-| playbook\_bundle\_s3\_key | the path to the ansible bundle zip file in the s3 bucket | `string` | n/a | yes |
 | regex\_replace\_chars | Regex to replace chars with empty string in `namespace`, `environment`, `stage` and `name`.<br>If not set, `"/[^a-zA-Z0-9-]/"` is used to remove all characters other than hyphens, letters and digits. | `string` | n/a | yes |
 | ssm\_logs\_bucket | S3 bucket name of the bucket where SSM Session Manager logs are stored | `string` | n/a | yes |
 | stage | Stage, e.g. 'prod', 'staging', 'dev', OR 'source', 'build', 'test', 'deploy', 'release' | `string` | n/a | yes |
@@ -148,7 +153,6 @@ module "monitoring" {
 
 | Name | Description |
 |------|-------------|
-| asg | n/a |
 | efs | n/a |
 | efs\_kms\_key | n/a |
 | efs\_mount\_target | n/a |

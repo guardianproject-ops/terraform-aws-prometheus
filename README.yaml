@@ -29,21 +29,25 @@ usage: |-
   module "monitoring" {
     source          = "git::https://gitlab.com/guardianproject-ops/terraform-aws-prometheus.git?ref=master"
 
-    namespace       = var.namespace
-    name            = var.name
-    stage           = var.stage
-    delimiter       = var.delimiter
-    attributes      = ["matrix-alertmanager"]
-    tags            = var.tags
+    context                           = module.this.context
+    cloudflare_origin_ca_key          = var.cloudflare_origin_ca_key
+    cloudflare_auth_key               = var.cloudflare_auth_key
+    cloudflare_auth_email             = var.cloudflare_auth_email
+    cloudflare_zone                   = var.cloudflare_zone
+    cloudflare_zone_id                = var.cloudflare_zone_id
+    monitoring_domain                 = var.monitoring_domain
+    matrix_alertmanager_shared_secret = var.matrix_alertmanager_shared_secret
+    matrix_alertmanager_url           = var.matrix_alertmanager_url
+    alertmanager_receivers            = replace(var.alertmanager_receivers, "matrix_alertmanager_url", var.matrix_alertmanager_lambda_url)
+    alertmanager_route                = var.alertmanager_route
+    kms_key_arn                       = var.kms_key_arn
 
-    playbook_bundle_s3_key = var.playbook_bundle_s3_key
-    playbook_bucket        = var.playbook_bucket
-    ssm_logs_bucket        = var.ssm_logs_bucket
+    ami                    = local.ami
     vpc_id                 = var.vpc_id
-    subnet_id              = var.subnet_id
-    ami                    = var.ami
-    instance_type          = var.instance_type
     az                     = var.az
+    instance_type          = var.instance_type
+    subnet_id              = var.subnet_id
+    ssm_logs_bucket        = var.ssm_logs_bucket
   }
   ```
 

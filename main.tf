@@ -1,22 +1,30 @@
 module "label" {
-  source     = "git::https://github.com/cloudposse/terraform-null-label.git?ref=tags/0.19.2"
+  source = "git::https://github.com/cloudposse/terraform-null-label.git?ref=tags/0.19.2"
+
   context    = module.this.context
-  attributes = concat(var.attributes, ["prometheus"])
+  attributes = concat(var.attributes, ["prom"])
   tags       = merge(var.tags, map("Application", local.tag_application))
+}
+
+module "label_instance" {
+  source = "git::https://github.com/cloudposse/terraform-null-label.git?ref=tags/0.19.2"
+
+  context = module.label.context
+  tags    = merge(module.label.tags, map("SSMPrefix", local.ssm_prefix))
 }
 
 module "label_efs" {
-  source     = "git::https://github.com/cloudposse/terraform-null-label.git?ref=tags/0.19.2"
-  context    = module.this.context
-  attributes = concat(var.attributes, ["efs"])
-  tags       = merge(var.tags, map("Application", local.tag_application))
+  source = "git::https://github.com/cloudposse/terraform-null-label.git?ref=tags/0.19.2"
+
+  context    = module.label.context
+  attributes = concat(module.this.attributes, ["efs"])
 }
 
 locals {
-  ssm_prefix            = module.label.id
+  ssm_prefix            = module.ssm_prefix_self.full_prefix
   tag_application       = "prometheus"
-  ansible_document_name = "AWS-ApplyAnsiblePlaybooks"
-  association_name      = "PrometheusApply"
+  should_create_kms_key = ! (length(var.kms_key_arn) > 0)
+  kms_key_arn           = local.should_create_kms_key ? module.kms_key[0].key_arn : var.kms_key_arn
 }
 
 data "aws_region" "current" {}
@@ -25,78 +33,91 @@ data "aws_region" "current" {}
 # Param Store Resources #
 #########################
 resource "aws_ssm_parameter" "cloudflare_origin_ca_key" {
-  name  = "/${local.ssm_prefix}/cloudflare_origin_ca_key"
+  name  = "${local.ssm_prefix}/cloudflare_origin_ca_key"
   type  = "SecureString"
   value = var.cloudflare_origin_ca_key
   tags  = module.label.tags
 }
 resource "aws_ssm_parameter" "cloudflare_auth_key" {
-  name  = "/${local.ssm_prefix}/cloudflare_auth_key"
+  name  = "${local.ssm_prefix}/cloudflare_auth_key"
   type  = "SecureString"
   value = var.cloudflare_auth_key
   tags  = module.label.tags
 }
 resource "aws_ssm_parameter" "cloudflare_auth_email" {
-  name  = "/${local.ssm_prefix}/cloudflare_auth_email"
+  name  = "${local.ssm_prefix}/cloudflare_auth_email"
   type  = "SecureString"
   value = var.cloudflare_auth_email
   tags  = module.label.tags
 }
 resource "aws_ssm_parameter" "cloudflare_zone" {
-  name  = "/${local.ssm_prefix}/cloudflare_zone"
+  name  = "${local.ssm_prefix}/cloudflare_zone"
   type  = "SecureString"
   value = var.cloudflare_zone
   tags  = module.label.tags
 }
 resource "aws_ssm_parameter" "cloudflare_zone_id" {
-  name  = "/${local.ssm_prefix}/cloudflare_zone_id"
+  name  = "${local.ssm_prefix}/cloudflare_zone_id"
   type  = "SecureString"
   value = var.cloudflare_zone_id
   tags  = module.label.tags
 }
 resource "aws_ssm_parameter" "monitoring_domain" {
-  name  = "/${local.ssm_prefix}/monitoring_domain"
+  name  = "${local.ssm_prefix}/monitoring_domain"
   type  = "SecureString"
   value = var.monitoring_domain
   tags  = module.label.tags
 }
 resource "aws_ssm_parameter" "matrix_alertmanager_shared_secret" {
-  name  = "/${local.ssm_prefix}/matrix_alertmanager_shared_secret"
+  name  = "${local.ssm_prefix}/matrix_alertmanager_shared_secret"
   type  = "SecureString"
   value = var.matrix_alertmanager_shared_secret
   tags  = module.label.tags
 }
 resource "aws_ssm_parameter" "matrix_alertmanager_url" {
-  name  = "/${local.ssm_prefix}/matrix_alertmanager_url"
+  name  = "${local.ssm_prefix}/matrix_alertmanager_url"
   type  = "SecureString"
   value = var.matrix_alertmanager_url
   tags  = module.label.tags
 }
 resource "aws_ssm_parameter" "alertmanager_receivers" {
-  name  = "/${local.ssm_prefix}/alertmanager_receivers"
+  name  = "${local.ssm_prefix}/alertmanager_receivers"
   type  = "SecureString"
   value = var.alertmanager_receivers
   tags  = module.label.tags
 }
 resource "aws_ssm_parameter" "alertmanager_route" {
-  name  = "/${local.ssm_prefix}/alertmanager_route"
+  name  = "${local.ssm_prefix}/alertmanager_route"
   type  = "SecureString"
   value = yamlencode(var.alertmanager_route)
   tags  = module.label.tags
 }
 resource "aws_ssm_parameter" "monitoring_nfs_url" {
-  name  = "/${local.ssm_prefix}/monitoring_nfs_url"
+  name  = "${local.ssm_prefix}/monitoring_nfs_url"
   type  = "String"
   value = aws_efs_file_system.default.dns_name
   tags  = module.label.tags
 }
+
+resource "aws_ssm_parameter" "extra" {
+  for_each = var.extra_ssm_params
+
+  name  = "${local.ssm_prefix}/${each.key}"
+  type  = "SecureString"
+  value = each.value
+  tags  = module.label.tags
+}
+
 #######################
 # IAM Resources       #
 #######################
 
 # create a kms_key to encrypt prometheus data with
 module "kms_key" {
-  source     = "git::https://github.com/cloudposse/terraform-aws-kms-key.git?ref=tags/0.7.0"
+  source = "git::https://github.com/cloudposse/terraform-aws-kms-key.git?ref=tags/0.7.0"
+
+  count = local.should_create_kms_key ? 1 : 0
+
   name       = var.name
   namespace  = var.namespace
   stage      = var.stage
@@ -109,48 +130,22 @@ module "kms_key" {
 
 # create a policy to let the instance fetch its own prefix from SSM params
 module "ssm_prefix_self" {
-  source            = "git::https://gitlab.com/guardianproject-ops/terraform-aws-ssm-param-store-iam?ref=tags/3.0.1"
-  path_prefix       = "${module.label.id}/"
+  source = "git::https://gitlab.com/guardianproject-ops/terraform-aws-ssm-param-store-iam?ref=tags/3.1.0"
+
+  path_prefix       = "${module.label.id}"
   prefix_with_label = false
-  name              = var.name
-  namespace         = var.namespace
-  stage             = var.stage
-  attributes        = module.label.attributes
-  tags              = var.tags
   region            = data.aws_region.current.name
-  kms_key_arn       = module.kms_key.key_arn
+  kms_key_arn       = local.kms_key_arn
+  context           = module.this.context
+  attributes        = module.label.attributes
 }
 
-# define a policy that allows the instance to read from the ansible playbook bucket
-data "aws_iam_policy_document" "playbook_bucket_access" {
-  statement {
-    sid = "AllowToReadFromPlaybookBucket"
-    actions = [
-      "s3:Get*",
-      "s3:List*",
-    ]
-
-    resources = [
-      "arn:aws:s3:::${var.playbook_bucket}",
-      "arn:aws:s3:::${var.playbook_bucket}/*"
-    ]
-  }
-}
-
-resource "aws_iam_policy" "playbook_bucket_access" {
-  name        = "playbook-bucket-access-${module.label.id}"
-  description = "Policy that allows instances readonly access to playbook bucket"
-  policy      = data.aws_iam_policy_document.playbook_bucket_access.json
-}
 
 # create a policy that allows the instance to use session manager and send logs an bucket
 module "session_manager" {
-  source         = "git::https://gitlab.com/guardianproject-ops/terraform-aws-session-manager-instance-policy?ref=tags/0.3.1"
-  name           = var.name
-  namespace      = var.namespace
-  stage          = var.stage
-  attributes     = module.label.attributes
-  tags           = var.tags
+  source = "git::https://gitlab.com/guardianproject-ops/terraform-aws-session-manager-instance-policy?ref=tags/0.3.2"
+
+  context        = module.label.context
   s3_bucket_name = var.ssm_logs_bucket
   s3_key_prefix  = module.label.id
 }
@@ -178,16 +173,11 @@ resource "aws_iam_policy" "session_manager_bucket_access" {
 
 # attach policies to the instance role
 module "instance_role_attachment" {
-  source     = "git::https://gitlab.com/guardianproject-ops/terraform-aws-iam-instance-role-policy-attachment?ref=tags/2.0.1"
-  namespace  = var.namespace
-  stage      = var.stage
-  name       = var.name
-  attributes = var.attributes
-  delimiter  = var.delimiter
+  source = "git::https://gitlab.com/guardianproject-ops/terraform-aws-iam-instance-role-policy-attachment?ref=tags/2.1.0"
 
+  context = module.label.context
   iam_policy_arns = [
     module.session_manager.ec2_session_manager_policy_arn,
-    aws_iam_policy.playbook_bucket_access.arn,
     aws_iam_policy.session_manager_bucket_access.arn,
     module.ssm_prefix_self.policy_arn,
     "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore",
@@ -208,7 +198,7 @@ resource "aws_iam_instance_profile" "profile" {
 resource "aws_efs_file_system" "default" {
   tags             = module.label_efs.tags
   encrypted        = true
-  kms_key_id       = module.kms_key.key_arn
+  kms_key_id       = local.kms_key_arn
   performance_mode = "generalPurpose"
   throughput_mode  = "bursting"
 }
@@ -240,28 +230,27 @@ USERDATA
 module "autoscale_group" {
   source = "git::https://github.com/cloudposse/terraform-aws-ec2-autoscale-group.git?ref=tags/0.7.1"
 
-  namespace  = var.namespace
-  stage      = var.stage
-  name       = var.name
-  attributes = var.attributes
-  delimiter  = var.delimiter
+  namespace  = module.label_instance.namespace
+  stage      = module.label_instance.stage
+  name       = module.label_instance.name
+  attributes = module.label_instance.attributes
+  delimiter  = module.label_instance.delimiter
 
-  image_id                  = var.ami
-  instance_type             = var.instance_type
-  security_group_ids        = local.security_group_ids
-  iam_instance_profile_name = aws_iam_instance_profile.profile.name
-  subnet_ids                = [var.subnet_id]
-  health_check_type         = "EC2"
-  min_size                  = 1
-  max_size                  = 1
-  wait_for_capacity_timeout = "5m"
-  # we assign the instance a public ip, even though we do not open any ports.
-  # this is because an elastic ip is cheaper than a NAT Gateway
-  associate_public_ip_address = true
-  # user_data_base64            = "${base64encode(local.userdata)}"
+  image_id                    = var.ami
+  instance_type               = var.instance_type
+  security_group_ids          = local.security_group_ids
+  iam_instance_profile_name   = aws_iam_instance_profile.profile.name
+  subnet_ids                  = [var.subnet_id]
+  health_check_type           = "EC2"
+  min_size                    = 1
+  max_size                    = 1
+  wait_for_capacity_timeout   = "5m"
+  associate_public_ip_address = false
+  key_name                    = var.key_name
+  user_data_base64            = "${base64encode(local.userdata)}"
 
 
-  tags = module.label.tags
+  tags = module.label_instance.tags
 
   autoscaling_policies_enabled = false
 }
@@ -311,27 +300,5 @@ resource "aws_security_group" "efs" {
     to_port     = 0
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
-  }
-}
-
-resource "aws_ssm_association" "prometheus" {
-  name             = local.ansible_document_name
-  association_name = local.association_name
-  targets {
-    key    = "tag:Application"
-    values = [local.tag_application]
-  }
-  output_location {
-    s3_bucket_name = var.ssm_logs_bucket
-    s3_key_prefix  = "${var.name}/${local.association_name}"
-  }
-  parameters = {
-    SourceType          = "S3"
-    SourceInfo          = "{ \"path\": \"https://s3.amazonaws.com/${var.playbook_bucket}/${var.playbook_bundle_s3_key}\" }"
-    InstallDependencies = "False"
-    PlaybookFile        = "playbooks/prometheus.yml"
-    ExtraVariables      = "SSM=True"
-    Check               = "False"
-    Verbose             = "-vvvv"
   }
 }

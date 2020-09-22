@@ -1,6 +1,6 @@
-output "asg" {
-  value = module.autoscale_group
-}
+#output "asg" {
+#  value = module.autoscale_group
+#}
 
 output "efs_kms_key" {
   value = module.kms_key

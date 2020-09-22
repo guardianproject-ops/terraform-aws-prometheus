@@ -1,3 +1,8 @@
+variable "kms_key_arn" {
+  type        = string
+  description = "kms key arn to encrypt prometheus data with, if none provided one will be created."
+  default     = ""
+}
 variable "vpc_id" {
   type        = string
   description = "the vpc id the instance will be placed in"
@@ -20,16 +25,6 @@ variable "instance_type" {
 
 variable "subnet_id" {
   description = "the subnet id to place the instance on"
-  type        = string
-}
-
-variable "playbook_bucket" {
-  description = "the s3 bucket id that the instance can read ansible playbooks from"
-  type        = string
-}
-
-variable "playbook_bundle_s3_key" {
-  description = "the path to the ansible bundle zip file in the s3 bucket"
   type        = string
 }
 
@@ -69,4 +64,15 @@ variable "alertmanager_receivers" {
 }
 variable "alertmanager_route" {
   description = "the yaml snippet as per alertmanager's 'routes' docs"
+}
+variable "key_name" {
+  default     = ""
+  type        = string
+  description = "Optional SSH key pair name"
+}
+
+variable "extra_ssm_params" {
+  type        = map(string)
+  description = "Extra key value pairs to set as SSM params"
+  default     = {}
 }
