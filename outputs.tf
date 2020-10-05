@@ -13,3 +13,7 @@ output "efs" {
 output "efs_mount_target" {
   value = aws_efs_mount_target.default
 }
+
+output "kms_key_arn" {
+  value = local.kms_key_arn
+}
