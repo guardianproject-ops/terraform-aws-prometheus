@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.1.0](https://gitlab.com/guardianproject-ops/terraform-aws-prometheus/compare/3.0.0...3.1.0) (2020-10-05)
+
+
+### Features
+
+* Add kms_key_arn as output ([b0a346b](https://gitlab.com/guardianproject-ops/terraform-aws-prometheus/commit/b0a346b62973baab186c54e1e751b5326b59c4a5))
+
 ## [3.0.0](https://gitlab.com/guardianproject-ops/terraform-aws-prometheus/compare/2.1.0...3.0.0) (2020-09-22)
 
 
