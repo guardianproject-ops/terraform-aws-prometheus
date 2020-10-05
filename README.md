@@ -156,6 +156,7 @@ module "monitoring" {
 | efs | n/a |
 | efs\_kms\_key | n/a |
 | efs\_mount\_target | n/a |
+| kms\_key\_arn | n/a |
 
 
 
